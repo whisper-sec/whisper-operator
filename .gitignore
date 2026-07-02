@@ -1,0 +1,5 @@
+bin/
+*.tgz
+cover.out
+dist/
+.DS_Store

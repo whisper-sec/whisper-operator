@@ -1,0 +1,103 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+rules:
+  # Validate the referenced API-key Secret exists before injecting (a missing
+  # Secret admits the pod unmutated with a clear warning instead of wedging it
+  # in CreateContainerConfigError). Secret VALUES are never read into logs.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  # Count injected pods for WhisperEgress status.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Optional per-namespace defaults.
+  - apiGroups: ["egress.whisper.security"]
+    resources: ["whisperegresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["egress.whisper.security"]
+    resources: ["whisperegresses/status"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}-webhook-ca
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+rules:
+  # Stamp the self-managed CA bundle into our own webhook configuration only.
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations"]
+    resourceNames: ["{{ include "whisper-operator.fullname" . }}"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "whisper-operator.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "whisper-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}-webhook-ca
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "whisper-operator.fullname" . }}-webhook-ca
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "whisper-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+rules:
+  # Persist the self-managed webhook CA + serving cert (in this namespace only).
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "update"]
+  # Leader election (when replicaCount > 1).
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "whisper-operator.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "whisper-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}

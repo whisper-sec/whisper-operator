@@ -1,0 +1,19 @@
+# A pod that opts in by label (works in any namespace). In a namespace
+# labelled whisper.security/egress=enabled the label is not needed.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo
+  labels:
+    whisper.security/egress: enabled
+  annotations:
+    # Optional: pin a specific Whisper agent identity (id, name, or /128).
+    # whisper.security/agent: scout
+    # Optional: a different Secret / port:
+    # whisper.security/secret: whisper
+    # whisper.security/port: "18080"
+spec:
+  containers:
+    - name: app
+      image: curlimages/curl
+      command: ["sleep", "infinity"]

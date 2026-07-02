@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "whisper-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whisper-operator.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "whisper-operator.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: {{ include "whisper-operator.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --webhook-port={{ .Values.webhook.port }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SERVICE_NAME
+              value: {{ include "whisper-operator.webhookService" . }}
+            - name: WEBHOOK_CONFIG_NAME
+              value: {{ include "whisper-operator.fullname" . }}
+            - name: CERT_SECRET_NAME
+              value: {{ include "whisper-operator.fullname" . }}-webhook-cert
+            - name: CERT_DIR
+              value: /certs
+            - name: WHISPER_SIDECAR_IMAGE
+              value: {{ .Values.sidecar.image }}
+            - name: WHISPER_DEFAULT_SECRET
+              value: {{ .Values.sidecar.secretName }}
+            - name: WHISPER_DEFAULT_SECRET_KEY
+              value: {{ .Values.sidecar.secretKey }}
+            - name: WHISPER_DEFAULT_PORT
+              value: {{ .Values.sidecar.port | quote }}
+            {{- if .Values.leaderElection }}
+            - name: LEADER_ELECT
+              value: "true"
+            {{- end }}
+          ports:
+            - name: webhook
+              containerPort: {{ .Values.webhook.port }}
+            - name: health
+              containerPort: 8081
+            - name: metrics
+              containerPort: 8082
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+      volumes:
+        - name: certs
+          emptyDir:
+            medium: Memory
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
