@@ -1,0 +1,55 @@
+# whisper-operator — sensible defaults for everything; the common case needs
+# zero configuration:  helm install whisper-operator ...  and label a namespace.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/whisper-sec/whisper-operator
+  # tag defaults to the chart appVersion
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# The egress sidecar injected into opted-in pods.
+sidecar:
+  # The official multi-arch Whisper CLI image (runs `whisper connect`).
+  image: ghcr.io/whisper-sec/whisper:latest
+  # Default Secret (and key) holding the Whisper API key, per namespace:
+  #   kubectl create secret generic whisper --from-literal=api-key=<your key>
+  secretName: whisper
+  secretKey: api-key
+  # Local loopback port the sidecar proxy listens on inside each pod.
+  port: 18080
+
+webhook:
+  # Fail OPEN: a Whisper outage must never block a pod from scheduling.
+  failurePolicy: Ignore
+  timeoutSeconds: 5
+  port: 9443
+
+# Cert mode: "self-managed" (default — the operator mints and rotates its own
+# webhook CA + leaf, zero dependencies) or "cert-manager" (bring your own
+# cert-manager Certificate; set the caBundle injection annotation yourself).
+certs:
+  mode: self-managed
+
+# Leader election for the (thin) WhisperEgress reconciler. Off for the default
+# single replica; turn on when replicaCount > 1.
+leaderElection: false
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+serviceAccount:
+  create: true
+  name: ""
+
+# Extra labels applied to every rendered resource.
+commonLabels: {}

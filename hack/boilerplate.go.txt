@@ -1,0 +1,2 @@
+// Copyright 2026 viaGraph B.V. (Whisper Security)
+// SPDX-License-Identifier: MIT

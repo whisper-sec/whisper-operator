@@ -1,0 +1,25 @@
+whisper-operator is installed.
+
+Give any workload a real Whisper network identity in three steps:
+
+  1. Put your Whisper API key in the workload's namespace:
+       kubectl -n <ns> create secret generic {{ .Values.sidecar.secretName }} \
+         --from-literal={{ .Values.sidecar.secretKey }}=<your Whisper API key>
+
+  2. Opt in — the whole namespace:
+       kubectl label namespace <ns> whisper.security/egress=enabled
+     or a single pod (label it):
+       whisper.security/egress: enabled
+
+  3. That's it. New pods get a zero-privilege Whisper sidecar and their
+     egress sources from a routable Whisper IPv6 /128. Verify from inside
+     any injected pod:
+       kubectl -n <ns> exec <pod> -- curl -s https://v6.ident.me
+
+Anyone can verify the identity — no key needed:
+  dig -x <the /128>        → <agent>.agents.whisper.online
+  https://rdap.whisper.online/ip/<the /128>
+
+Per-pod knobs (annotations): whisper.security/agent, /secret, /secret-key,
+/port, /tier, /image. Per-namespace defaults: the optional WhisperEgress CRD.
+Docs: https://github.com/whisper-sec/whisper-operator

@@ -1,0 +1,13 @@
+# Optional per-namespace defaults. With this in place, pods in the namespace
+# need nothing but the opt-in label.
+apiVersion: egress.whisper.security/v1alpha1
+kind: WhisperEgress
+metadata:
+  name: default
+  namespace: my-team
+spec:
+  secretRef:
+    name: whisper       # kubectl -n my-team create secret generic whisper --from-literal=api-key=...
+    key: api-key
+  tier: socks5          # zero-privilege default
+  port: 18080

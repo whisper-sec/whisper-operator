@@ -1,0 +1,62 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "whisper-operator.fullname" . }}
+  labels:
+    {{- include "whisper-operator.labels" . | nindent 4 }}
+webhooks:
+  # Namespace opt-in: every pod in a namespace labelled
+  #   whisper.security/egress: enabled
+  - name: inject-ns.whisper.security
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    reinvocationPolicy: IfNeeded
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    clientConfig:
+      service:
+        name: {{ include "whisper-operator.webhookService" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate-pod
+      # caBundle is stamped by the operator at startup (self-managed certs).
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchExpressions:
+        - key: whisper.security/egress
+          operator: In
+          values: ["enabled", "true"]
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "kube-node-lease", "kube-public", {{ .Release.Namespace | quote }}]
+  # Pod opt-in: a pod labelled whisper.security/egress: enabled in ANY
+  # namespace (except system/operator namespaces).
+  - name: inject-pod.whisper.security
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    reinvocationPolicy: IfNeeded
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    clientConfig:
+      service:
+        name: {{ include "whisper-operator.webhookService" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate-pod
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    objectSelector:
+      matchExpressions:
+        - key: whisper.security/egress
+          operator: In
+          values: ["enabled", "true"]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "kube-node-lease", "kube-public", {{ .Release.Namespace | quote }}]

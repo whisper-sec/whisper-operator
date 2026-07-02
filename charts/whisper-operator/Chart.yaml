@@ -1,0 +1,25 @@
+apiVersion: v2
+name: whisper-operator
+description: >-
+  Kubernetes operator that gives pods a real network identity: a mutating
+  webhook injects a zero-privilege Whisper egress sidecar into labelled
+  pods/namespaces so their traffic sources from a routable Whisper IPv6 /128 —
+  verifiable by anyone via reverse DNS + RDAP. One label, no NET_ADMIN, fail-open.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://whisper.online
+icon: https://whisper.online/favicon.svg
+sources:
+  - https://github.com/whisper-sec/whisper-operator
+keywords:
+  - whisper
+  - egress
+  - identity
+  - ipv6
+  - sidecar
+  - agents
+maintainers:
+  - name: Whisper Security
+    email: security@whisper.online
+kubeVersion: ">=1.29.0-0"
