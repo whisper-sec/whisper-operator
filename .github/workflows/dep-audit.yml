@@ -1,0 +1,27 @@
+name: dep-audit
+
+# Continuous dependency-vulnerability audit.
+# Fails the build when govulncheck finds a reachable known vulnerability.
+# Runs on every pull request and every push to the default branch, plus a
+# weekly off-peak sweep so a newly-disclosed advisory is caught even when no
+# new commit lands. Complements the pre-publish security review.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "53 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
